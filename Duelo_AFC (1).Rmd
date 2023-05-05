@@ -1,0 +1,472 @@
+
+# Análisis confirmatorio para Duelo
+
+```{r}
+library(haven)
+marco <- read_sav("Muestra no prob. con pérdida completos.sav")
+```
+
+```{r}
+names(marco)
+```
+
+```{r}
+library(psych)
+library(GPArotation)
+
+theData = marco 
+
+#theData = marco[,c(86:95)] 
+#theData = theData[,-3]
+names(theData)
+```
+
+```{r}
+theData=theData[complete.cases(theData),]
+#theData=theData[rowSums(is.na(theData)) != ncol(theData),]
+#theData <- subset(theData , q0027_0001 != 9)
+#theData <- subset(theData , q0027_0005 != 9)
+theData[theData == 9] <- NA
+```
+
+```{r}
+#theDatachar= theData
+```
+
+```{r}
+theData = as.data.frame(lapply(theData, as.numeric))
+
+str(theData)
+```
+
+```{r}
+round(cor(theData, use = "complete.obs"),2)
+```
+
+```{r}
+#round(cov(theData, use = "complete.obs"),2)
+```
+
+```{r}
+library(ggplot2)
+library(ggcorrplot)
+
+library(tidyverse)
+theData %>%
+    cor(use = "complete.obs") %>% 
+    ggcorrplot(type = "lower", ggtheme = theme_minimal, colors = c("#6D9EC1","white","#E46726"),
+               show.diag = T,
+               lab = T, lab_size = 2.5,
+               legend.title = "Correlation Value",
+               outline.color = "white",
+               hc.order = T)
+```
+
+```{r}
+KMO(theData)
+```
+
+```{r}
+cortest.bartlett(theData)
+```
+
+```{r}
+fa.parallel(theData)
+
+#, fm = 'minres', fa = 'fa'
+```
+
+```{r}
+resfa <- fa(theData, nfactors = 3, cor = 'cor', rotate = "varimax", fm="minres")
+```
+
+```{r}
+print(resfa$loadings, cutoff = 0.30)
+```
+
+```{r}
+texas = 'FACTOR 1 =~ q0023_0001 + q0023_0002 + q0023_0003 + q0023_0004 + q0023_0005 + 
+q0023_0006 + q0023_0007 + q0023_0008 
+FACTOR 2 =~ q0024_0001 + q0024_0002 + q0024_0003 + q0024_0004 + q0024_0005 + q0024_0006 + q0024_0007 + q0024_0008 + q0024_0009 + q0024_0010 + q0024_0011 + q0024_0012 + q0024_0013'
+```
+
+```{r}
+library(lavaan)
+
+cfa_fit_texas <- cfa(texas, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+as.data.frame(fitMeasures(cfa_fit_texas))
+```
+
+```{r}
+summary(cfa_fit_texas, fit.measures=TRUE,standardized=TRUE)
+```
+
+```{r}
+library(dplyr)
+library(pander)
+modificationindices(cfa_fit_texas) %>%
+  as_data_frame() %>%
+  arrange(-mi) %>%
+  filter(mi > 11) %>%
+  select(lhs, op, rhs, mi, epc) %>%
+  pander(caption="Largest MI values for hz.fit")
+```
+
+
+```{r}
+estresores = 'FACTOR 1 =~ q0026_0001 + q0026_0002 + q0026_0006 
+FACTOR 2 =~ q0026_0003 + q0026_0007+ q0026_0008 + q0026_0009+ q0026_0010
+FACTOR 3 =~ q0026_0004 + q0026_0005'
+```
+
+```{r}
+library(lavaan)
+
+cfa_fit_estresores <- cfa(estresores, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+as.data.frame(fitMeasures(cfa_fit_estresores))
+```
+
+```{r}
+summary(cfa_fit_estresores, fit.measures=TRUE,standardized=TRUE)
+```
+
+
+
+```{r}
+recursos_1 = 'FACTOR_1 =~ q0028_0001 + q0028_0002 + q0028_0003 + q0028_0004 + q0028_0005 + q0028_0006
+FACTOR_2 =~ q0028_0007 + q0028_0008 + q0028_0009 + q0028_0010 + q0028_0011'
+
+recursos_2 = 'FACTOR_1 =~ q0028_0001 + q0028_0002 + q0028_0003 + q0028_0004 + q0028_0005 
+FACTOR_2 =~ q0028_0006 + q0028_0007 + q0028_0008 + q0028_0009 + q0028_0010 + q0028_0011'
+
+recursos_3 = 'FACTOR_1 =~ q0028_0001 + q0028_0002 + q0028_0003 + q0028_0004 
+FACTOR_2 =~ q0028_0007 + q0028_0008 + q0028_0009 + q0028_0010 + q0028_0011'
+
+afrontamiento_sin_3_10 = 'FACTOR 1 =~ q0027_0001	+ q0027_0002	+ q0027_0007	+ q0027_0008 + q0027_0009	+ q0027_0015 
+FACTOR 2 =~ q0027_0004	+ q0027_0013	+ q0027_0014
+FACTOR 3 =~ q0027_0011	+ q0027_0012
+FACTOR 4 =~ q0027_0005 +	q0027_0006'
+```
+
+```{r}
+
+cfa_fit_afrontamiento_sin_3_10 <- cfa(afrontamiento_sin_3_10, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+as.data.frame(fitMeasures(cfa_fit_afrontamiento_sin_3_10))
+```
+
+```{r}
+summary(cfa_fit_afrontamiento_sin_3_10, fit.measures=TRUE,standardized=TRUE)
+```
+
+
+```{r}
+cfa_fit_recursos <- cfa(recursos_1, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+library(dplyr)
+library(pander)
+modificationindices(cfa_fit_afrontamiento_sin_3) %>%
+  as_data_frame() %>%
+  arrange(-mi) %>%
+  filter(mi > 11) %>%
+  select(lhs, op, rhs, mi, epc) %>%
+  pander(caption="Largest MI values for hz.fit")
+```
+
+```{r}
+#as.data.frame(fitMeasures(cfa_fit_recursos))
+```
+
+
+
+```{r}
+cfa_fit_recursos_2 <- cfa(recursos_2, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_recursos_3 <- cfa(recursos_3, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+as.data.frame(fitMeasures(cfa_fit_recursos_3))
+```
+
+```{r}
+fa.diagram(resfa)
+```
+
+
+```{r}
+library(lavaan)
+
+model_3 <- 'FACTOR_1 =~ q0027_0001 + q0027_0002 +	q0027_0005 +	q0027_0006 +	q0027_0007 + q0027_0008 + q0027_0009	+ q0027_0015 
+            FACTOR_2 =~ q0027_0004	+ q0027_0013 +	q0027_0014
+            FACTOR_3 =~ q0027_0010 +	q0027_0011 +	q0027_0012 +	q0027_0003'
+
+model_4 <- 'FACTOR 1 =~ q0027_0001	+ q0027_0002	+ q0027_0007	+ q0027_0008 + q0027_0009	+ q0027_0015 
+FACTOR 2 =~ q0027_0005 +	q0027_0006
+FACTOR 3 =~ q0027_0004	+ q0027_0013	+ q0027_0014
+FACTOR 4 =~ q0027_0010	+ q0027_0011	+ q0027_0012	+ q0027_0003'
+
+model_4_b <- 'FACTOR 1 =~ q0027_0001	+ q0027_0002	+ q0027_0007	+ q0027_0008 + q0027_0009	+ q0027_0015 
+FACTOR 2 =~ q0027_0005 +	q0027_0006
+FACTOR 3 =~ q0027_0004	+ q0027_0013	+ q0027_0014
+FACTOR 4 =~ q0027_0012	+ q0027_0003'
+
+model_5_a <- 'FACTOR 1=~ 	q0027_0007	+ q0027_0008	+ q0027_0009	+ q0027_0015
+FACTOR 2=~ 	q0027_0010 +	q0027_0011	+ q0027_0012	+ q0027_0003
+FACTOR 3=~ 	q0027_0005	+ q0027_0006
+FACTOR 4=~ 	q0027_0001	+ q0027_0002	+ q0027_0014
+FACTOR 5=~ 	q0027_0004	+ q0027_0013'
+
+model_5_b <- 'FACTOR 1=~q0027_0007 + q0027_0008 + q0027_0009 + q0027_0015
+FACTOR 2=~  q0027_0010 + q0027_0011 + q0027_0012 + q0027_0003
+FACTOR 3=~  q0027_0005 + q0027_0006
+FACTOR 4=~  q0027_0001 + q0027_0002  
+FACTOR 5=~  q0027_0004 + q0027_0013 + q0027_0014'
+
+model_5_c <- 'FACTOR 1=~ q0027_0001  + q0027_0002 
+FACTOR 2=~  q0027_0007 + q0027_0008 + q0027_0009 + q0027_0015
+FACTOR 3=~  q0027_0005 + q0027_0006
+FACTOR 4=~  q0027_0004 + q0027_0013 + q0027_0014
+FACTOR 5=~  q0027_0010 + q0027_0011 + q0027_0012 + q0027_0003'
+
+model_5_10_11 <- 'FACTOR 1=~ q0027_0001  + q0027_0002 
+FACTOR 2=~  q0027_0007 + q0027_0008 + q0027_0009 + q0027_0015
+FACTOR 3=~  q0027_0005 + q0027_0006
+FACTOR 4=~  q0027_0004 + q0027_0013 + q0027_0014
+FACTOR 5=~  q0027_0012 + q0027_0003'
+
+model_5_11 <- 'FACTOR 1=~ q0027_0001  + q0027_0002 
+FACTOR 2=~  q0027_0007 + q0027_0008 + q0027_0009 + q0027_0015
+FACTOR 3=~  q0027_0005 + q0027_0006
+FACTOR 4=~  q0027_0004 + q0027_0013 + q0027_0014
+FACTOR 5=~  q0027_0010 + q0027_0012 + q0027_0003'
+
+model_5_10 <- 'FACTOR 1=~ q0027_0001  + q0027_0002 
+FACTOR 2=~  q0027_0007 + q0027_0008 + q0027_0009 + q0027_0015
+FACTOR 3=~  q0027_0005 + q0027_0006
+FACTOR 4=~  q0027_0004 + q0027_0013 + q0027_0014
+FACTOR 5=~  q0027_0011 + q0027_0012 + q0027_0003'
+
+# Modelo sin el 14
+model_5_14 <- 'FACTOR 1=~ q0027_0007 +	q0027_0008	+ q0027_0009	+ q0027_0015
+FACTOR 2=~ q0027_0010	+ q0027_0011 +	q0027_0012	+ q0027_0003
+FACTOR 3=~ q0027_0005	+ q0027_0006
+FACTOR 4=~ q0027_0001	+ q0027_0002	
+FACTOR 5=~ q0027_0004	+ q0027_0013'
+
+model_5_14_2 <- 'FACTOR 1=~ q0027_0007 +	q0027_0008	+ q0027_0009	+ q0027_0015
+FACTOR 2=~ 	q0027_0010	+ q0027_0011 +	q0027_0012	
+FACTOR 3=~ 	q0027_0005	+ q0027_0006 + q0027_0003
+FACTOR 4=~ 	q0027_0001	+ q0027_0002	
+FACTOR 5=~ 	q0027_0004	+ q0027_0013' #no
+
+model_5_14_3 <- 'FACTOR 1=~ q0027_0007 +	q0027_0008	+ q0027_0009	+ q0027_0015
+FACTOR 2=~ q0027_0010	+	q0027_0012	+ q0027_0003
+FACTOR 3=~ q0027_0005	+ q0027_0006 
+FACTOR 4=~ q0027_0001	+ q0027_0002 	
+FACTOR 5=~ q0027_0004 + q0027_0011	+ q0027_0013'
+
+
+model_efa_cor <- 'FACTOR 1=~ q0027_0007 +	q0027_0008	+ q0027_0009	+ q0027_0015
+FACTOR 2=~ q0027_0004 + q0027_0014	+ q0027_0013 
+FACTOR 3=~ q0027_0012	 + q0027_0010
+FACTOR 4=~ q0027_0001	+ q0027_0002 	
+FACTOR 5=~ q0027_0005 + q0027_0006 + q0027_0003 + q0027_0011'
+
+```
+
+```{r}
+cfa_fit_3 <- cfa(model_3, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_4 <- cfa(model_4, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_4_b <- cfa(model_4_b, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_a <- cfa(model_5_a, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_b <- cfa(model_5_b, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_c <- cfa(model_5_c, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_14 <- cfa(model_5_14, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+
+```{r}
+cfa_fit_5_14_2 <- cfa(model_5_14_2, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_10_11 <- cfa(model_5_10_11, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_11 <- cfa(model_5_11, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+cfa_fit_5_10 <- cfa(model_5_10, data = theData, 
+           std.lv=TRUE,  
+           missing="fiml")
+```
+
+```{r}
+#allParamCFA=parameterEstimates(cfa_fit,standardized = T)
+allFitCFA_3=as.list(fitMeasures(cfa_fit_3))
+allFitCFA_3$formula = "3 factores"
+allFitCFA_4=as.list(fitMeasures(cfa_fit_4))
+allFitCFA_4$formula = "4 factores"
+allFitCFA_4_b=as.list(fitMeasures(cfa_fit_4_b))
+allFitCFA_5_a=as.list(fitMeasures(cfa_fit_5_a))
+allFitCFA_5_a$formula = "5 factores (a)"
+allFitCFA_5_b=as.list(fitMeasures(cfa_fit_5_b))
+allFitCFA_5_b$formula = "5 factores (b)"
+allFitCFA_5_c=as.list(fitMeasures(cfa_fit_5_c))
+allFitCFA_5_c$formula = "5 factores (c)"
+allFitCFA_5_d=as.list(fitMeasures(cfa_fit_5_d))
+allFitCFA_5_d$formula = "5 factores (d)"
+
+
+as.data.frame(fitMeasures(cfa_fit_5_b))
+```
+
+```{r}
+library(pander)
+# summary(cfa_fit_3, fit.measures=TRUE,standardized=TRUE)
+
+#allFitCFA_3[c('chisq', 'df', 'pvalue','cfi','tli','rmsea.ci.lower','rmsea' ,'rmsea.ci.upper')]
+
+indicadores = Reduce(function(x, y) merge(x, y, all=TRUE), list(allFitCFA_3, allFitCFA_4,
+                                                  allFitCFA_5_a, allFitCFA_5_b,
+                                                  allFitCFA_5_c))
+```
+
+```{r}
+write.csv(indicadores, "indicadores_afc.csv")
+```
+
+```{r}
+allParamCFA_3=parameterEstimates(cfa_fit_3,standardized = T)
+allParamCFA_4=parameterEstimates(cfa_fit_4,standardized = T)
+allParamCFA_5_a=parameterEstimates(cfa_fit_5_a,standardized = T)
+allParamCFA_5_b=parameterEstimates(cfa_fit_5_b,standardized = T)
+allParamCFA_5_c=parameterEstimates(cfa_fit_5_c,standardized = T)
+allParamCFA_5_c=parameterEstimates(cfa_fit_5_d,standardized = T)
+
+allParamCFA_3$formula = "3 factores"
+allParamCFA_4$formula = "4 factores"
+allParamCFA_5_a$formula = "5 factores (a)"
+allParamCFA_5_b$formula = "5 factores (b)"
+allParamCFA_5_c$formula = "5 factores (c)"
+
+
+parametros = Reduce(function(x, y) merge(x, y, all=TRUE), list(allParamCFA_3, allParamCFA_4,
+                                                  allParamCFA_5_a, allParamCFA_5_b,
+                                                  allParamCFA_5_c))
+
+
+fitmeasures(cfa_fit_5_d, c('cfi', 'rmsea', 'rmsea.ci.upper', 'bic'))
+
+allParamCFA_5_c
+
+#modificationindices(cfa_fit_5_d)
+```
+
+
+```{r}
+library(dplyr)
+library(pander)
+modificationindices(cfa_fit_5_11) %>%
+  as_data_frame() %>%
+  arrange(-mi) %>%
+  filter(mi > 11) %>%
+  select(lhs, op, rhs, mi, epc) %>%
+  pander(caption="Largest MI values for hz.fit")
+```
+
+
+```{r}
+summary(cfa_fit_4, fit.measures=FALSE,standardized=TRUE)
+```
+
+
+```{r}
+write.csv(parametros, "parametros_afc.csv")
+```
+
+```{r}
+summary(cfa_fit_5_a, fit.measures=TRUE,standardized=TRUE)
+```
+
+
+```{r}
+summary(cfa_fit_5_b, fit.measures=TRUE,standardized=TRUE)
+```
+
+
+```{r}
+summary(cfa_fit_5_c, fit.measures=TRUE,standardized=TRUE)
+```
+
+```{r}
+#library(knitr)
+#allParamCFA[allParamCFA$op=="=~",]%>%
+ # pander
+```
+

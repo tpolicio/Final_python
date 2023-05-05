@@ -1,0 +1,1314 @@
+---
+title: "Exploratorio y Confirmatorio"
+author: "Guillermo Soto"
+date: "2023-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("haven")
+```
+
+```{r}
+library(haven)
+library(tidyverse)
+library(psych)
+library(rela)
+library(BBmisc)
+library(naniar)
+library(visdat)
+library(simputation)
+library(mice)
+library(rmdformats)
+library(corrplot)
+library(lavaan)
+library(semPlot)
+```
+
+```{r}
+#Importamos base filtrada 
+data_1<-read_sav("Universidades de la RPU integradas filtrada MC 11-04-2023.sav")
+```
+
+# Análisis Factorial
+
+*Todos los modelos exploratorios se han procesado con wls mientras que los confirmatorios han sido con wlsmv*
+
+## 1. ESCALA DE DUELO TEXAS
+
+```{r}
+#Seleccionamos variables a procesar
+duelo_texas<-data_1|>select(q0021_0001, q0021_0002, q0021_0003, q0021_0004, q0021_0005, q0021_0006, q0021_0007, q0021_0008, q0022_0001, q0022_0002, q0022_0003, q0022_0004, q0022_0005, q0022_0006, q0022_0007, q0022_0008, q0022_0009, q0022_0010, q0022_0011, q0022_0012, q0022_0013)
+```
+
+```{r}
+miss_texas<-miss_case_summary(duelo_texas)
+```
+
+```{r}
+miss_texas|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_texas|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+
+### Por imputación
+
+```{r}
+duelo_texas_20NA<- duelo_texas|> mutate(pcent_miss_case=(rowSums(is.na(duelo_texas))/21)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_texas <- mice(duelo_texas_20NA[,-22],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_texas<- mice::complete(imp_texas)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_texas)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_texas)
+#KMO=0.97
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_texas)[1])
+#p=0
+```
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_texas,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_texas,nfactors = 3,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(duelo_texas, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(duelo_texas)
+#KMO=0.97
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(duelo_texas)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(duelo_texas,fa="fa", fm="wls", nfactor=1)
+#El modelo recomienda hasta 3 pero según Mónica es 1
+```
+
+**factores**
+
+```{r}
+factorial <- fa(duelo_texas,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+#### Proceso 3 factores
+
+**factores**
+
+```{r}
+factorial <- fa(duelo_texas,nfactors = 3,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#de todas maneras dejo este modelo de 3 factores
+```
+
+### AFC
+
+```{r}
+texas_onefac<-'Texas =~ q0021_0001 + q0021_0002 + q0021_0003 + q0021_0004 + q0021_0005 + q0021_0006 + q0021_0007 + q0021_0008 + q0022_0001 + q0022_0002 + q0022_0003 + q0022_0004 + q0022_0005 + q0022_0006 + q0022_0007 + q0022_0008 + q0022_0009 + q0022_0010 + q0022_0011 + q0022_0012 + q0022_0013'
+```
+
+```{r}
+texas_one_AFC<-cfa(texas_onefac, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(texas_one_AFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(texas_one_AFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(texas_one_AFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(4780.734,189, lower.tail = FALSE), scientific = FALSE)
+```
+
+*Al ser 0 y el rmsea > 0.05 por lo que el modelo parece inapropiado. Sin embargo, el tli, cfi, nfi, gfi son mayores a 0,90*
+
+```{r}
+chi_square_norm<-4780.734/189
+chi_square_norm
+```
+*No estaba seguro si a los modelos unidimensionales se aplican los mismos análisis*
+
+## 2. ESCALA DE CREENCIAS SOBRE DUELO 2FAC A
+
+```{r}
+#Seleccionamos variables a procesar
+creen_duelo_A<-data_1|>select(q0027_0001, q0027_0002, q0027_0003, q0027_0005, q0027_0006, q0027_0008, q0027_0009, q0027_0010, q0027_0012, q0027_0014, q0027_0016, q0027_0017, q0027_0018, q0027_0004, q0027_0007, q0027_0011, q0027_0013, q0027_0015)
+```
+
+```{r}
+miss_creen<-miss_case_summary(creen_duelo_A)
+```
+
+```{r}
+miss_creen|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef")
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_creen|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+
+### Por imputación
+
+```{r}
+creen_duelo_20N_A<- creen_duelo_A|> mutate(pcent_miss_case=(rowSums(is.na(creen_duelo_A))/18)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_creen_A <- mice(creen_duelo_20N_A[,-19],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_creen_A<- mice::complete(imp_creen_A)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_creen_A)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_creen_A)
+#KMO=0.91
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_creen_A)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_creen_A,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_creen_A,nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#Los factores cuadran como los dejó Mónica salvo por el q0027_0002 y el q0027_0006 que aparecen en el segundo factor, pero son justo esos dos los que se van a eliminar
+```
+
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(creen_duelo_A, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(creen_duelo_A)
+#KMO=0.91
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(creen_duelo_A)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(creen_duelo_A,fa="fa", fm="wls")
+#Los métodos recomiendan 4 factores pero se ajustan mejor con 3
+```
+
+**factores**
+
+```{r}
+factorial <- fa(creen_duelo_A, nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+*Salvo por el q0027_0002 y el q0027_0006, no se ajusta del todo al modelo. Verificar sus valores al igual que los del q0027_0001 y del q0027_0005*
+
+### AFC con la propuesta de Monica
+
+```{r}
+creen_A_2fac<-'Irracional =~ q0027_0001 + q0027_0002 + q0027_0003 + q0027_0005 + q0027_0006 + q0027_0008 + q0027_0009 + q0027_0010 + q0027_0012 + q0027_0014 + q0027_0016 + q0027_0017 + q0027_0018
+Racional =~ q0027_0004 + q0027_0007 + q0027_0011 + q0027_0013 + q0027_0015'
+```
+
+```{r}
+creen_A_AFC<-cfa(creen_A_2fac, orthogonal=FALSE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(creen_A_AFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeLat = 10, sizeInt2 = 1 ,"std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(creen_A_AFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(creen_A_AFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(4886.544,134, lower.tail = FALSE), scientific = FALSE)
+```
+
+*Al ser 0 y el rmsea > 0.05 por lo que el modelo parece inapropiado. Sin embargo, el tli, cfi, nfi, gfi son mayores a 0,90*
+
+```{r}
+chi_square_norm<-4886.544/134
+chi_square_norm
+```
+
+### AFC con el resultado del AFE
+
+```{r}
+creen_A_2fac<-'Irracional =~ q0027_0001 + q0027_0003 + q0027_0005 + q0027_0008 + q0027_0009 + q0027_0010 + q0027_0012 + q0027_0014 + q0027_0016 + q0027_0017 + q0027_0018
+Racional =~ q0027_0002 + q0027_0004 + q0027_0006 + q0027_0007 + q0027_0011 + q0027_0013 + q0027_0015'
+```
+
+```{r}
+creen_A_AFC<-cfa(creen_A_2fac, orthogonal=FALSE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(creen_A_AFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeLat = 10, sizeInt2 = 1 ,"std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(creen_A_AFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(creen_A_AFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(4254.243,134, lower.tail = FALSE), scientific = FALSE)
+```
+
+*Al ser 0 y el rmsea > 0.05 por lo que el modelo parece inapropiado. Sin embargo, el tli, cfi, nfi, gfi son mayores a 0,90*
+
+```{r}
+chi_square_norm<-4254.243/134
+chi_square_norm
+```
+
+## 2. ESCALA DE CREENCIAS SOBRE DUELO 2FAC B
+
+```{r}
+#Seleccionamos variables a procesar
+creen_duelo_B<-data_1|>select(q0027_0001, q0027_0003, q0027_0005, q0027_0008, q0027_0009, q0027_0010, q0027_0012, q0027_0014, q0027_0016, q0027_0017, q0027_0018, q0027_0004, q0027_0007, q0027_0011, q0027_0013, q0027_0015)
+#sin q0027_0002 y q0027_0006
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(creen_duelo_B, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(creen_duelo_B)
+#KMO=0.9
+```
+
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(creen_duelo_B)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(creen_duelo_B,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(creen_duelo_B, nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+#El modelo recomienda 4 factores pero se ajusta mejor con 2
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#Este modelos se asemeja más al que propone Mónica
+```
+
+### AFC
+
+```{r}
+creen_B_2fac<-'Irracional =~ q0027_0001 + q0027_0003 + q0027_0005 + q0027_0008 + q0027_0009 + q0027_0010 + q0027_0012 + q0027_0014 + q0027_0016 + q0027_0017 + q0027_0018
+Racional =~ q0027_0004 + q0027_0007 + q0027_0011 + q0027_0013 + q0027_0015'
+```
+
+```{r}
+creen_B_AFC<-cfa(creen_B_2fac, orthogonal=FALSE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(creen_B_AFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeLat = 10, sizeInt2 = 1 ,"std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(creen_B_AFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(creen_B_AFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(2144.763,103, lower.tail = FALSE), scientific = FALSE)
+```
+
+*Al ser 0 y el rmsea > 0.05 por lo que el modelo parece inapropiado. Sin embargo, el tli, cfi, nfi, gfi son mayores a 0,90*
+
+```{r}
+chi_square_norm<-2144.763/103
+chi_square_norm
+```
+
+## 3. ESCALA DE AFRONTAMIENTO FRENTE AL DUELO 4FAC A
+
+```{r}
+#Seleccionamos variables a procesar
+afront_duelo_A<-data_1|>select(q0025_0005, q0025_0006, q0025_0017, q0025_0016, q0025_0001, q0025_0002, q0025_0007, q0025_0008, q0025_0009, q0025_0004, q0025_0014, q0025_0015, q0025_0003, q0025_0010, q0025_0011, q0025_0012, q0025_0013)
+```
+
+```{r}
+miss_afront<-miss_case_summary(afront_duelo_A)
+```
+
+```{r}
+miss_afront|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef")
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_afront|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+
+### Por imputación
+
+```{r}
+afront_duelo_20N_A<- afront_duelo_A|> mutate(pcent_miss_case=(rowSums(is.na(afront_duelo_A))/17)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_afront_A <- mice(afront_duelo_20N_A[,-18],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_afront_A<- mice::complete(imp_afront_A)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_afront_A)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_afront_A)
+#KMO=0.89
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_afront_A)[1])
+#p=0
+```
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_afront_A,fa="fa", fm="wls")
+#Este si se ajusta al modelo de 4 factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_afront_A,nfactors = 4,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo no queda igual en distribución de elementos
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(afront_duelo_A, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(afront_duelo_A)
+#KMO=0.88
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(afront_duelo_A)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(afront_duelo_A,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(afront_duelo_A, nfactors = 4,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo no sale igual al de Mónica
+```
+
+## 3. ESCALA DE AFRONTAMIENTO FRENTE AL DUELO 4FAC B
+
+```{r}
+#Seleccionamos variables a procesar
+afront_duelo_B<-data_1|>select(q0025_0005, q0025_0006, q0025_0017, q0025_0001, q0025_0002, q0025_0007, q0025_0008, q0025_0009, q0025_0004, q0025_0014, q0025_0015, q0025_0010, q0025_0011, q0025_0012, q0025_0013)
+```
+
+### Por imputación
+
+```{r}
+afront_duelo_20N_B<- afront_duelo_B|> mutate(pcent_miss_case=(rowSums(is.na(afront_duelo_B))/15)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_afront_B <- mice(afront_duelo_20N_B[,-16],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_afront_B<- mice::complete(imp_afront_B)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_afront_B)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_afront_B)
+#KMO=0.87
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_afront_B)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_afront_B,fa="fa", fm="wls")
+#En el modelo B hay 4 factores como en el propuesto por mónica
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_afront_B, nfactors = 4, cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#Este modelo si queda igual que el de Mónica
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(afront_duelo_B, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(afront_duelo_B)
+#KMO=0.86
+```
+
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(afront_duelo_B)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(afront_duelo_B,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(afront_duelo_B,nfactors = 4,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#Por parwise también queda igual
+```
+
+## 4. ESCALA ESTRESORES DUELO COVID-19 UNIDIMENSIONAL
+
+```{r}
+#Seleccionamos variables a procesar
+estres_duelo<-data_1|>select(q0024_0003, q0024_0004, q0024_0008, q0024_0009, q0024_0010, q0024_0011, q0024_0001, q0024_0002, q0024_0005, q0024_0006, q0024_0007)
+```
+
+```{r}
+miss_estres<-miss_case_summary(estres_duelo)
+```
+
+```{r}
+miss_estres|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef")
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_estres|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+
+### Por imputación
+
+```{r}
+estres_20N<- estres_duelo|> mutate(pcent_miss_case=(rowSums(is.na(estres_duelo))/11)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_estres <- mice(estres_20N[,-12],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_estres<- mice::complete(imp_estres)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_estres)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_estres)
+#KMO=0.82
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_estres)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_estres,fa="fa", fm="wls")
+#Con este método salen dos factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_estres, nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(estres_duelo, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(estres_duelo)
+#KMO=0.82
+```
+
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(estres_duelo)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(estres_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+## 4. ESCALA ESTRESORES DUELO COVID-19 2FAC
+
+```{r}
+fa.parallel(estres_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo,nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+## 4. ESCALA ESTRESORES DUELO COVID-19 3FAC A
+
+```{r}
+fa.parallel(estres_duelo,fa="fa", fm="wls")
+#Con otros métodos salen 5 factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo,nfactors = 3,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo no sale igual al propuesto por Mónica
+```
+
+
+## 4. ESCALA ESTRESORES DUELO COVID-19 3FAC B
+
+MODELO DE 3 FACTORES B- 11 ítems
+FACTOR 1: Vinculares / emocionales (4 ítems): q0024_0005  q0024_0008  q0024_0010 q0024_0011
+FACTOR 2: Administrativas / económicas / otras áreas de la vida cotidiana (4 ítems): q0024_0001  q0024_0002  q0024_0006  q0024_0007
+FACTOR 3: Vida cotidiana / otras áreas de la vida (3 ítems): q0024_0003  q0024_0004  q0024_0009
+
+## 5. ESCALA DE RITOS AL DUELO POR COVID UNIDIMENSIONAL
+
+```{r}
+#Seleccionamos variables a procesar
+ritos_duelo<-data_1|>select(q0023_0001, q0023_0002, q0023_0003, q0023_0004, q0023_0005, q0023_0006, q0023_0007, q0023_0008)
+```
+
+```{r}
+miss_ritos<-miss_case_summary(ritos_duelo)
+```
+
+```{r}
+miss_ritos|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef")
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_ritos|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+### Por imputación
+
+```{r}
+ritos_20N<- ritos_duelo|> mutate(pcent_miss_case=(rowSums(is.na(ritos_duelo))/8)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_ritos <- mice(ritos_20N[,-9],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_ritos<- mice::complete(imp_ritos)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_ritos)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_ritos)
+#KMO=0.82
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_ritos)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_ritos,fa="fa", fm="wls")
+#Con este método salen dos factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_estres, nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(ritos_duelo, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(ritos_duelo)
+#KMO=0.82
+```
+
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(ritos_duelo)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(ritos_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo_dosfac,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+## ESCALA DE RITOS AL DUELO POR COVIDMODELO DOS DIMENSIONES A
+
+FACTOR 1: q0023_0001  q0023_0002  q0023_0003  q0023_0004  q0023_0005  q0023_0006 
+FACTOR 2: q0023_0007 q0023_0008 
+
+
+```{r}
+fa.parallel(estres_duelo_dosfac,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo_dosfac,nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+*El modelo sale igual al tipo B*
+
+## ESCALA DE RITOS AL DUELO POR COVID MODELO DOS DIMENSIONES B
+
+FACTOR 1: 5 ítems: q0023_0001  q0023_0002  q0023_0003  q0023_0004  q0023_0005
+FACTOR 2: 3 ítems: q0023_0006  q0023_0007 q0023_0008
+
+
+
