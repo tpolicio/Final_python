@@ -1,0 +1,257 @@
+## 5. ESCALA DE RITOS AL DUELO POR COVID UNIDIMENSIONAL
+
+```{r}
+#Seleccionamos variables a procesar
+ritos_duelo<-data_1|>select(q0023_0001, q0023_0002, q0023_0003, q0023_0004, q0023_0005, q0023_0006, q0023_0007, q0023_0008)
+```
+
+```{r}
+miss_ritos<-miss_case_summary(ritos_duelo)
+```
+
+```{r}
+miss_ritos|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef")
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_ritos|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+### Por imputación
+
+```{r}
+ritos_20N<- ritos_duelo|> mutate(pcent_miss_case=(rowSums(is.na(ritos_duelo))/8)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_ritos <- mice(ritos_20N[,-9],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_ritos<- mice::complete(imp_ritos)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_ritos)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_ritos)
+#KMO=0.82
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_ritos)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_ritos,fa="fa", fm="wls")
+#Con este método salen dos factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_estres, nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(ritos_duelo, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(ritos_duelo)
+#KMO=0.82
+```
+
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(ritos_duelo)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(ritos_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(ritos_duelo,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+## FAC_5UNIDIMENSIONAL
+
+```{r}
+unidimensional5 <-'unidimensional5_fac =~ q0023_0001 + q0023_0002 + q0023_0003 + q0023_0004 + q0023_0005 + q0023_0006 + q0023_0007 + q0023_0008  '
+```
+
+```{r}
+unidimencional5AFC<-cfa(unidimensional5, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(unidimencional5AFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(unidimencional5AFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(unidimencional5AFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(276.638,20, lower.tail = FALSE), scientific = FALSE)
+```
+
+
+
+
+
+
+## ESCALA DE RITOS AL DUELO POR COVIDMODELO DOS DIMENSIONES A
+
+FACTOR 1: q0023_0001  q0023_0002  q0023_0003  q0023_0004  q0023_0005  q0023_0006 
+FACTOR 2: q0023_0007 q0023_0008 
+
+
+```{r}
+fa.parallel(ritos_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(ritos_duelo,nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+*El modelo sale igual al tipo B*
+
+## ESCALA DE RITOS AL DUELO POR COVID MODELO DOS DIMENSIONES B
+
+FACTOR 1: 5 ítems: q0023_0001  q0023_0002  q0023_0003  q0023_0004  q0023_0005
+FACTOR 2: 3 ítems: q0023_0006  q0023_0007 q0023_0008
+
+## FAC_2DIMENSIONESA
+
+```{r}
+dimensiones52a <-'dimen1 =~ q0023_0001 + q0023_0002 + q0023_0003 + q0023_0004 + q0023_0005  
+dimen2 =~ q0023_0006 + q0023_0007 + q0023_0008'
+```
+
+```{r}
+dimensiones52aAFC<-cfa(dimensiones52a, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(dimensiones52aAFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(dimensiones52aAFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(dimensiones52aAFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(1424.833,20, lower.tail = FALSE), scientific = FALSE)
+```
+
+

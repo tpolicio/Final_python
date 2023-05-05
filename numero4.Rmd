@@ -1,0 +1,347 @@
+## 4. ESCALA ESTRESORES DUELO COVID-19 UNIDIMENSIONAL
+
+```{r}
+#Seleccionamos variables a procesar
+estres_duelo<-data_1|>select(q0024_0003, q0024_0004, q0024_0008, q0024_0009, q0024_0010, q0024_0011, q0024_0001, q0024_0002, q0024_0005, q0024_0006, q0024_0007)
+```
+
+```{r}
+miss_estres<-miss_case_summary(estres_duelo)
+```
+
+```{r}
+miss_estres|>ggplot(aes(x=pct_miss))+
+  geom_density(fill="#69b3a2", color="#e9ecef")
+```
+
+```{r}
+# Cantidad de casos con 0% de valores perdidos
+miss_estres|> 
+  filter(pct_miss==0)|>
+  nrow()
+```
+
+### Por imputación
+
+```{r}
+estres_20N<- estres_duelo|> mutate(pcent_miss_case=(rowSums(is.na(estres_duelo))/11)*100)|>
+  filter(pcent_miss_case==0)
+```
+
+```{r}
+imp_estres <- mice(estres_20N[,-12],m = 1,
+  maxit = 1, method = "rf",seed = 2023,print=F)
+complete_estres<- mice::complete(imp_estres)
+```
+
+#### Pruebas
+
+```{r}
+matrixcor<-cor(complete_estres)
+```
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(complete_estres)
+#KMO=0.82
+```
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(complete_estres)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(complete_estres,fa="fa", fm="wls")
+#Con este método salen dos factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(complete_estres, nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+```
+
+### Por parwise ("excluir casos según pareja")
+
+```{r}
+matrixcor<-cor(estres_duelo, use = "pairwise.complete.obs")
+```
+
+#### Pruebas
+
+**Matriz de correlaciones**
+
+```{r}
+cor.plot(matrixcor)
+```
+
+**Test KMO**
+
+```{r}
+psych::KMO(estres_duelo)
+#KMO=0.82
+```
+
+
+**Test Bartlett**
+
+```{r}
+cortest.bartlett(matrixcor,n=dim(estres_duelo)[1])
+#p=0
+```
+
+#### Proceso
+
+**N°de factores recomendados**
+
+```{r}
+fa.parallel(estres_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo,nfactors = 1,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+## FAC_UNIDIMENSIONAL
+
+```{r}
+unidimencional4 <-'unidimensional =~ q0024_0003 + q0024_0004 + q0024_0008 + q0024_0009 + q0024_0010 + q0024_0011 + q0024_0001 + q0024_0002 + q0024_0005 + q0024_0006 + q0024_0007'
+```
+
+```{r}
+unidimencionalAFC<-cfa(unidimencional4, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(unidimencionalAFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(unidimencionalAFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(unidimencionalAFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(265.786,44, lower.tail = FALSE), scientific = FALSE)
+```
+
+## 4. ESCALA ESTRESORES DUELO COVID-19 2FAC
+
+```{r}
+fa.parallel(estres_duelo,fa="fa", fm="wls")
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo,nfactors = 2,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo sale igual
+```
+
+## FAC_2FACTORES
+
+```{r}
+factores2 <-'a  =~ q0024_0003 + q0024_0004 + q0024_0008 + q0024_0009 + q0024_0010 + q0024_0011
+b =~ q0024_0001 + q0024_0002 + q0024_0005 + q0024_0006  + q0024_0007 '
+```
+
+```{r}
+factores2AFC<-cfa(factores2, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(factores2AFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(factores2AFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(factores2AFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(1873.485,44, lower.tail = FALSE), scientific = FALSE)
+```
+
+
+## 4. ESCALA ESTRESORES DUELO COVID-19 3FAC A
+
+```{r}
+fa.parallel(estres_duelo,fa="fa", fm="wls")
+#Con otros métodos salen 5 factores
+```
+
+**factores**
+
+```{r}
+factorial <- fa(estres_duelo,nfactors = 3,cor = 'mixed',rotate = "varimax",fm="wls")
+```
+
+Analizamos los resultados con:
+
+```{r}
+print(factorial$loadings)
+```
+
+Podemos visualizar los loadings más representativos. 
+
+```{r}
+print(factorial$loadings,cutoff = 0.3)
+```
+
+Podemos visualizar los variables y su relación con las latentes creadas:
+
+```{r}
+fa.diagram(factorial)
+#El modelo no sale igual al propuesto por Mónica
+```
+
+## FAC_3FACTORESA
+
+```{r}
+factores3a <-'aa  =~ q0024_0005  + q0024_0007  + q0024_0008  + q0024_0010  + q0024_0011
+bb =~ q0024_0001  + q0024_0002 + q0024_0006  
+cc =~ q0024_0003 + q0024_0004 + q0024_0009'
+```
+
+```{r}
+factores3aAFC<-cfa(factores3a, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(factores3aAFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(factores3aAFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(factores3aAFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(1873.485,44, lower.tail = FALSE), scientific = FALSE)
+```
+
+
+## FAC_3FACTORESB
+
+```{r}
+factores3b <-'aaa  =~ q0024_0005  + q0024_0008  + q0024_0010  + q0024_0011
+bbb =~ q0024_0001  + q0024_0002 + q0024_0006 + q0024_0007  
+ccc =~ q0024_0003 + q0024_0004 + q0024_0009'
+```
+
+```{r}
+factores3bAFC<-cfa(factores3b, orthogonal=TRUE, data=data_1, estimator="WLSMV", ordered = names(data_1))
+```
+
+```{r}
+semPaths(factores3bAFC, nCharNodes = 0, intercepts = FALSE, edge.label.cex = 1, edge.color = "black", label.prop=1.5, sizeMan = 5, sizeLat =7, sizeInt = 0.05, "std", layout = "tree", exoVar = FALSE )
+```
+
+```{r}
+summary(factores3bAFC, fit.measures=TRUE, standardized=FALSE)
+```
+
+```{r}
+fitMeasures(factores3bAFC, fit.measures = c("chisq","df","rmsea", "tli", "cfi", "nfi", "gfi"))
+```
+
+```{r}
+format(pchisq(1873.485,44, lower.tail = FALSE), scientific = FALSE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

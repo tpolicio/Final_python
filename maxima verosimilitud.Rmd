@@ -1,0 +1,95 @@
+## 1 TEXAS
+```{r}
+texasmv <- 'texasmv1 =~ q0021_0001 + q0021_0002 + q0021_0003 + q0021_0004 + q0021_0005 + q0021_0006 + q0021_0007 + q0021_0008 + q0022_0001 + q0022_0002 + q0022_0003 + q0022_0004 + q0022_0005 + q0022_0006 + q0022_0007 + q0022_0008 + q0022_0009 + q0022_0010 + q0022_0011 + q0022_0012 + q0022_0013'
+```
+
+```{r}
+fit <- cfa(texasmv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+## 2 CREENCIAS DUELO
+
+```{r}
+#MODELO 2FAC-A
+modelo2a_mv <- 'modelo2amv =~ q0027_0001 + q0027_0002 + q0027_0003 + q0027_0005 + q0027_0006 + q0027_0008 + q0027_0009 + q0027_0010 + q0027_0012 + q0027_0014 + q0027_0016 + q0027_0017 + q0027_0018
+modelo2amv1 =~ q0027_0004 + q0027_0007 + q0027_0011 + q0027_0013 + q0027_0015' 
+```
+
+```{r}
+fit <- cfa(modelo2a_mv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+```{r}
+#MODELO 2FAC-B
+modelo2b_mv <- 'modelo2bmv =~ q0027_0001 + q0027_0003 + q0027_0005 + q0027_0008 + q0027_0009 + q0027_0010 + q0027_0012 + q0027_0014 + q0027_0016 + q0027_0017 + q0027_0018
+modelo2bmv2 =~ q0027_0004 + q0027_0007 + q0027_0011 + q0027_0013 + q0027_0015'
+```
+
+```{r}
+fit <- cfa(modelo2b_mv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+## 4 ESTRESORES DUELO
+
+```{r}
+#MODELO UNIDIMENSIONAL
+unidimensional4_mv <- 'unidimensional4 =~ q0024_0003 + q0024_0004 + q0024_0008 + q0024_0009 + q0024_0010 + q0024_0011 + q0024_0001 + q0024_0002 + q0024_0005 + q0024_0006 + q0024_0007'
+```
+
+```{r}
+fit <- cfa(unidimensional4_mv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+```{r}
+#MODELO 2 FAC
+modelo2fac4_mv <- 'modelo2fac4mv  =~ q0024_0003 + q0024_0004 + q0024_0008 + q0024_0009 + q0024_0010 + q0024_0011
+modelo2fac4mv2 =~ q0024_0001 + q0024_0002 + q0024_0005 + q0024_0006  + q0024_0007 '
+```
+
+```{r}
+fit <- cfa(modelo2fac4_mv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+```{r}
+#MODELO 3 FAC A
+modelo3afac4_mv <- 'modelo3afac4mv  =~ q0024_0005  + q0024_0007  + q0024_0008  + q0024_0010  + q0024_0011
+modelo3afac4mv1 =~ q0024_0001  + q0024_0002 + q0024_0006  
+modelo3afac4mv2 =~ q0024_0003 + q0024_0004 + q0024_0009'
+```
+
+```{r}
+fit <- cfa(modelo3afac4_mv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+```{r}
+#MODELO 3 FAC B
+modelo3bfac4_mv <- 'modelo3bfac4mv  =~ q0024_0005  + q0024_0008  + q0024_0010  + q0024_0011
+modelo3bfac4mv =~ q0024_0001  + q0024_0002 + q0024_0006 + q0024_0007  
+modelo3bfac4mv =~ q0024_0003 + q0024_0004 + q0024_0009'
+```
+
+```{r}
+fit <- cfa(modelo3bfac4_mv, data = data_1, estimator = "ML")
+
+summary(fit, standardized = TRUE, fit.measures = TRUE, modindices = TRUE)
+```
+
+
+
+
+
+
+
+
